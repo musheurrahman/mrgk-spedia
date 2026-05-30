@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MRGKMania – AI GK ChatBot</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;500;700&family=Hind+Siliguri:wght@300;400;600&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --neon-cyan: #00f5ff;
+      --neon-gold: #ffd700;
+      --neon-pink: #ff006e;
+      --deep-bg: #020010;
+      --card-bg: rgba(0,10,40,0.85);
+      --glass: rgba(0,245,255,0.07);
+      --text: #e0f7ff;
+      --sub: #7ecfdf;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--deep-bg);
+      color: var(--text);
+      font-family: 'Rajdhani', 'Hind Siliguri', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ===== 3D STARFIELD CANVAS ===== */
+    #starfield {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* ===== FLOATING GRID LINES ===== */
+    .grid-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background-image:
+        linear-gradient(rgba(0,245,255,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,245,255,0.04) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events: none;
+      animation: gridPulse 8s ease-in-out infinite;
+    }
+    @keyframes gridPulse {
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 1; }
+    }
+
+    /* ===== HEADER ===== */
+    header {
+      position: relative;
+      z-index: 10;
+      text-align: center;
+      padding: 48px 20px 20px;
+    }
+
+    .logo-wrap {
+      display: inline-block;
+      position: relative;
+    }
+
+    .logo-title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: clamp(2.4rem, 7vw, 5rem);
+      font-weight: 900;
+      letter-spacing: 0.12em;
+      background: linear-gradient(135deg, var(--neon-cyan) 0%, var(--neon-gold) 50%, var(--neon-pink) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter: drop-shadow(0 0 18px var(--neon-cyan));
+      animation: titlePulse 3s ease-in-out infinite;
+      transform-style: preserve-3d;
+    }
+    @keyframes titlePulse {
+      0%, 100% { filter: drop-shadow(0 0 18px var(--neon-cyan)); }
+      50% { filter: drop-shadow(0 0 36px var(--neon-gold)) drop-shadow(0 0 60px var(--neon-cyan)); }
+    }
+
+    .logo-sub {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: clamp(0.9rem, 2.5vw, 1.2rem);
+      letter-spacing: 0.4em;
+      color: var(--sub);
+      text-transform: uppercase;
+      margin-top: 6px;
+    }
+
+    .badge {
+      display: inline-block;
+      margin-top: 14px;
+      padding: 4px 18px;
+      border: 1px solid var(--neon-gold);
+      border-radius: 40px;
+      font-size: 0.78rem;
+      letter-spacing: 0.2em;
+      color: var(--neon-gold);
+      background: rgba(255,215,0,0.07);
+      text-transform: uppercase;
+    }
+
+    /* ===== ROTATING 3D CUBE DECORATION ===== */
+    .scene-3d {
+      perspective: 600px;
+      display: flex;
+      justify-content: center;
+      margin: 18px 0 0;
+    }
+    .cube {
+      width: 50px; height: 50px;
+      transform-style: preserve-3d;
+      animation: rotateCube 6s linear infinite;
+      position: relative;
+    }
+    .cube-face {
+      position: absolute;
+      width: 50px; height: 50px;
+      border: 1.5px solid var(--neon-cyan);
+      background: rgba(0,245,255,0.06);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.7rem;
+      color: var(--neon-cyan);
+    }
+    .cube-face.front  { transform: translateZ(25px); }
+    .cube-face.back   { transform: rotateY(180deg) translateZ(25px); }
+    .cube-face.left   { transform: rotateY(-90deg) translateZ(25px); }
+    .cube-face.right  { transform: rotateY(90deg) translateZ(25px); }
+    .cube-face.top    { transform: rotateX(90deg) translateZ(25px); }
+    .cube-face.bottom { transform: rotateX(-90deg) translateZ(25px); }
+    @keyframes rotateCube {
+      from { transform: rotateX(0) rotateY(0); }
+      to   { transform: rotateX(360deg) rotateY(360deg); }
+    }
+
+    /* ===== STATS BAR ===== */
+    .stats-bar {
+      position: relative; z-index: 10;
+      display: flex; justify-content: center; gap: 32px;
+      flex-wrap: wrap;
+      padding: 16px 20px;
+      margin: 0 auto;
+      max-width: 700px;
+    }
+    .stat-item {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 2px;
+    }
+    .stat-num {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.5rem;
+      color: var(--neon-gold);
+      font-weight: 700;
+    }
+    .stat-label {
+      font-size: 0.72rem;
+      color: var(--sub);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+
+    /* ===== CHAT SECTION ===== */
+    .chat-container {
+      position: relative; z-index: 10;
+      max-width: 860px;
+      margin: 10px auto 0;
+      padding: 0 16px 40px;
+    }
+
+    .chat-box {
+      background: var(--card-bg);
+      border: 1px solid rgba(0,245,255,0.2);
+      border-radius: 20px;
+      box-shadow:
+        0 0 0 1px rgba(0,245,255,0.08),
+        0 8px 60px rgba(0,245,255,0.12),
+        inset 0 1px 0 rgba(255,255,255,0.05);
+      overflow: hidden;
+      backdrop-filter: blur(16px);
+    }
+
+    .chat-header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(0,245,255,0.12);
+      background: rgba(0,245,255,0.04);
+    }
+    .ai-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--neon-cyan);
+      box-shadow: 0 0 10px var(--neon-cyan);
+      animation: blink 1.4s ease-in-out infinite;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+    .chat-header-text {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.82rem;
+      color: var(--neon-cyan);
+      letter-spacing: 0.1em;
+    }
+    .model-tag {
+      margin-left: auto;
+      font-size: 0.65rem;
+      color: var(--neon-gold);
+      border: 1px solid rgba(255,215,0,0.3);
+      border-radius: 20px;
+      padding: 2px 10px;
+      letter-spacing: 0.1em;
+    }
+
+    .messages {
+      height: 420px;
+      overflow-y: auto;
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      scroll-behavior: smooth;
+    }
+    .messages::-webkit-scrollbar { width: 5px; }
+    .messages::-webkit-scrollbar-track { background: transparent; }
+    .messages::-webkit-scrollbar-thumb { background: rgba(0,245,255,0.25); border-radius: 4px; }
+
+    /* Message bubbles */
+    .msg {
+      display: flex;
+      gap: 10px;
+      animation: msgIn 0.35s cubic-bezier(.22,1,.36,1) both;
+    }
+    @keyframes msgIn {
+      from { opacity: 0; transform: translateY(14px) scale(0.97); }
+      to   { opacity: 1; transform: none; }
+    }
+    .msg.user { flex-direction: row-reverse; }
+
+    .avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      font-size: 1rem;
+    }
+    .avatar.ai {
+      background: linear-gradient(135deg, #00f5ff22, #00f5ff44);
+      border: 1px solid var(--neon-cyan);
+      box-shadow: 0 0 10px rgba(0,245,255,0.3);
+    }
+    .avatar.user {
+      background: linear-gradient(135deg, #ffd70022, #ffd70044);
+      border: 1px solid var(--neon-gold);
+    }
+
+    .bubble {
+      max-width: 74%;
+      padding: 12px 16px;
+      border-radius: 16px;
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+    .bubble.ai {
+      background: rgba(0,245,255,0.08);
+      border: 1px solid rgba(0,245,255,0.2);
+      border-radius: 4px 16px 16px 16px;
+      color: var(--text);
+    }
+    .bubble.user {
+      background: rgba(255,215,0,0.1);
+      border: 1px solid rgba(255,215,0,0.25);
+      border-radius: 16px 4px 16px 16px;
+      color: #fff8d6;
+      text-align: right;
+    }
+
+    /* Typing indicator */
+    .typing-indicator {
+      display: none;
+      gap: 5px;
+      align-items: center;
+      padding: 10px 16px;
+    }
+    .typing-indicator.active { display: flex; }
+    .typing-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--neon-cyan);
+      animation: typingBounce 1.2s ease-in-out infinite;
+    }
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes typingBounce {
+      0%, 80%, 100% { transform: scale(0.7); opacity: 0.5; }
+      40% { transform: scale(1.2); opacity: 1; }
+    }
+
+    /* Input area */
+    .input-area {
+      display: flex; gap: 10px; align-items: center;
+      padding: 16px 18px;
+      border-top: 1px solid rgba(0,245,255,0.12);
+      background: rgba(0,0,20,0.5);
+    }
+    #userInput {
+      flex: 1;
+      background: rgba(0,245,255,0.04);
+      border: 1px solid rgba(0,245,255,0.2);
+      border-radius: 30px;
+      padding: 12px 20px;
+      color: var(--text);
+      font-family: 'Rajdhani', 'Hind Siliguri', sans-serif;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    #userInput::placeholder { color: rgba(0,245,255,0.35); }
+    #userInput:focus {
+      border-color: var(--neon-cyan);
+      box-shadow: 0 0 18px rgba(0,245,255,0.18);
+    }
+    #sendBtn {
+      width: 48px; height: 48px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--neon-cyan), #0099bb);
+      border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 0 16px rgba(0,245,255,0.4);
+      transition: transform 0.15s, box-shadow 0.2s;
+    }
+    #sendBtn:hover {
+      transform: scale(1.1);
+      box-shadow: 0 0 28px rgba(0,245,255,0.6);
+    }
+    #sendBtn:active { transform: scale(0.95); }
+    #sendBtn svg { width: 20px; height: 20px; fill: #020010; }
+
+    /* ===== QUICK TOPICS ===== */
+    .topics-row {
+      display: flex; flex-wrap: wrap; gap: 8px;
+      padding: 0 18px 14px;
+    }
+    .topic-chip {
+      padding: 5px 14px;
+      border-radius: 20px;
+      border: 1px solid rgba(0,245,255,0.25);
+      background: rgba(0,245,255,0.05);
+      color: var(--sub);
+      font-size: 0.78rem;
+      cursor: pointer;
+      transition: all 0.18s;
+      letter-spacing: 0.05em;
+    }
+    .topic-chip:hover {
+      background: rgba(0,245,255,0.14);
+      color: var(--neon-cyan);
+      border-color: var(--neon-cyan);
+      box-shadow: 0 0 10px rgba(0,245,255,0.2);
+    }
+
+    /* ===== BOTTOM GLOW ===== */
+    .bottom-glow {
+      position: fixed;
+      bottom: -80px; left: 50%;
+      transform: translateX(-50%);
+      width: 600px; height: 200px;
+      background: radial-gradient(ellipse, rgba(0,245,255,0.12) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 600px) {
+      .messages { height: 320px; }
+      .bubble { max-width: 88%; }
+      .stats-bar { gap: 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="starfield"></canvas>
+<div class="grid-overlay"></div>
+<div class="bottom-glow"></div>
+
+<!-- HEADER -->
+<header>
+  <div class="logo-wrap">
+    <div class="logo-title">MRGKMania</div>
+    <div class="logo-sub">AI General Knowledge ChatBot</div>
+    <div class="badge">⚡ Powered by Claude AI</div>
+  </div>
+  <div class="scene-3d">
+    <div class="cube">
+      <div class="cube-face front">GK</div>
+      <div class="cube-face back">AI</div>
+      <div class="cube-face left">Q</div>
+      <div class="cube-face right">A</div>
+      <div class="cube-face top">∞</div>
+      <div class="cube-face bottom">MR</div>
+    </div>
+  </div>
+</header>
+
+<!-- STATS -->
+<div class="stats-bar">
+  <div class="stat-item">
+    <span class="stat-num" id="qCount">0</span>
+    <span class="stat-label">Questions Asked</span>
+  </div>
+  <div class="stat-item">
+    <span class="stat-num">∞</span>
+    <span class="stat-label">GK Topics</span>
+  </div>
+  <div class="stat-item">
+    <span class="stat-num">24/7</span>
+    <span class="stat-label">Available</span>
+  </div>
+</div>
+
+<!-- CHAT -->
+<div class="chat-container">
+  <div class="chat-box">
+    <div class="chat-header">
+      <div class="ai-dot"></div>
+      <span class="chat-header-text">MRGKMania AI — Online</span>
+      <span class="model-tag">GK Expert</span>
+    </div>
+
+    <div class="messages" id="messages">
+      <div class="msg">
+        <div class="avatar ai">🤖</div>
+        <div class="bubble ai">
+          স্বাগতম! আমি <strong>MRGKMania</strong> — আপনার AI সাধারণ জ্ঞান সহকারী। 🌍<br><br>
+          ইতিহাস, বিজ্ঞান, ভূগোল, খেলাধুলা, রাজনীতি, সাহিত্য — যেকোনো বিষয়ে প্রশ্ন করুন। আমি সাথে আছি!
+        </div>
+      </div>
+    </div>
+
+    <!-- Typing indicator inside messages -->
+    <div id="typingWrap" style="padding: 0 20px 8px;">
+      <div class="typing-indicator" id="typingIndicator">
+        <div class="avatar ai" style="width:28px;height:28px;font-size:0.75rem;">🤖</div>
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+      </div>
+    </div>
+
+    <!-- Quick topics -->
+    <div class="topics-row">
+      <span class="topic-chip" onclick="quickAsk('বাংলাদেশের রাজধানী কোথায়?')">🇧🇩 বাংলাদেশ</span>
+      <span class="topic-chip" onclick="quickAsk('পৃথিবীর সবচেয়ে বড় মহাসাগর কোনটি?')">🌊 ভূগোল</span>
+      <span class="topic-chip" onclick="quickAsk('আইনস্টাইন কী আবিষ্কার করেন?')">🔬 বিজ্ঞান</span>
+      <span class="topic-chip" onclick="quickAsk('FIFA বিশ্বকাপ কত বছর পরপর হয়?')">⚽ খেলাধুলা</span>
+      <span class="topic-chip" onclick="quickAsk('মুক্তিযুদ্ধ কবে শুরু হয়?')">📜 ইতিহাস</span>
+      <span class="topic-chip" onclick="quickAsk('সূর্য কতটা বড়?')">🌞 মহাকাশ</span>
+    </div>
+
+    <!-- Input -->
+    <div class="input-area">
+      <input type="text" id="userInput" placeholder="যেকোনো GK প্রশ্ন করুন..." autocomplete="off" />
+      <button id="sendBtn" onclick="sendMessage()">
+        <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== STARFIELD =====
+const canvas = document.getElementById('starfield');
+const ctx = canvas.getContext('2d');
+let stars = [];
+
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+function initStars() {
+  stars = [];
+  for (let i = 0; i < 200; i++) {
+    stars.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      z: Math.random() * canvas.width,
+      size: Math.random() * 1.5 + 0.2,
+      speed: Math.random() * 0.4 + 0.1,
+    });
+  }
+}
+initStars();
+
+function animateStars() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  stars.forEach(s => {
+    s.z -= s.speed * 1.5;
+    if (s.z <= 0) {
+      s.x = Math.random() * canvas.width;
+      s.y = Math.random() * canvas.height;
+      s.z = canvas.width;
+    }
+    const sx = (s.x - canvas.width / 2) * (canvas.width / s.z) + canvas.width / 2;
+    const sy = (s.y - canvas.height / 2) * (canvas.width / s.z) + canvas.height / 2;
+    const r = s.size * (1 - s.z / canvas.width);
+    const alpha = 1 - s.z / canvas.width;
+    ctx.beginPath();
+    ctx.arc(sx, sy, Math.max(r, 0.2), 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(180,240,255,${alpha})`;
+    ctx.fill();
+  });
+  requestAnimationFrame(animateStars);
+}
+animateStars();
+
+// ===== CHAT =====
+const messagesDiv = document.getElementById('messages');
+const inputEl = document.getElementById('userInput');
+const typingIndicator = document.getElementById('typingIndicator');
+let qCount = 0;
+let chatHistory = [];
+
+function addMsg(text, role) {
+  const msg = document.createElement('div');
+  msg.className = `msg ${role}`;
+  const avatar = document.createElement('div');
+  avatar.className = `avatar ${role}`;
+  avatar.textContent = role === 'ai' ? '🤖' : '🧑';
+  const bubble = document.createElement('div');
+  bubble.className = `bubble ${role}`;
+  bubble.innerHTML = text;
+  msg.appendChild(avatar);
+  msg.appendChild(bubble);
+  messagesDiv.appendChild(msg);
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+function showTyping(show) {
+  typingIndicator.classList.toggle('active', show);
+  if (show) messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+async function sendMessage() {
+  const text = inputEl.value.trim();
+  if (!text) return;
+  inputEl.value = '';
+  addMsg(text, 'user');
+  qCount++;
+  document.getElementById('qCount').textContent = qCount;
+
+  chatHistory.push({ role: 'user', content: text });
+
+  showTyping(true);
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: `তুমি MRGKMania — একটি বিশেষজ্ঞ সাধারণ জ্ঞান (GK) AI চ্যাটবট। তুমি ইতিহাস, ভূগোল, বিজ্ঞান, রাজনীতি, খেলাধুলা, সাহিত্য, গণিত, প্রযুক্তি সহ সব ধরনের GK প্রশ্নের উত্তর দিতে পারো।
+
+নিয়মাবলী:
+- সর্বদা সঠিক ও তথ্যভিত্তিক উত্তর দাও
+- উত্তর সংক্ষিপ্ত কিন্তু তথ্যসমৃদ্ধ রাখো
+- বাংলায় প্রশ্ন হলে বাংলায়, ইংরেজিতে প্রশ্ন হলে ইংরেজিতে উত্তর দাও
+- প্রয়োজনে বাংলা ও ইংরেজি মিশিয়ে উত্তর দিতে পারো
+- উত্তরের শেষে একটি আগ্রহজনক তথ্য বা ফ্যাক্ট যোগ করো
+- GK সংক্রান্ত না হলে বিনয়ের সাথে জানাও যে তুমি শুধু GK প্রশ্নের উত্তর দাও`,
+        messages: chatHistory,
+      })
+    });
+
+    const data = await resp.json();
+    const reply = data.content?.map(b => b.text || '').join('') || 'উত্তর পাওয়া যায়নি।';
+    showTyping(false);
+    chatHistory.push({ role: 'assistant', content: reply });
+    addMsg(reply.replace(/\n/g, '<br>'), 'ai');
+
+  } catch (err) {
+    showTyping(false);
+    addMsg('⚠️ সংযোগে সমস্যা হয়েছে। একটু পরে আবার চেষ্টা করুন।', 'ai');
+  }
+}
+
+function quickAsk(text) {
+  inputEl.value = text;
+  sendMessage();
+}
+
+inputEl.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+});
+</script>
+</body>
+</html>
